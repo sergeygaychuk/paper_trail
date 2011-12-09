@@ -27,6 +27,7 @@ There's an excellent [Railscast on implementing Undo with Paper Trail](http://ra
 * Supports custom name for versions association.
 * Thoroughly tested.
 * Threadsafe.
+* Allow you to retrieve data created by user or by multiple users
 
 
 ## Rails Version
@@ -69,6 +70,10 @@ When you declare `has_paper_trail` in your model, you get these methods:
 
     # Turn PaperTrail on for all widgets.
     Widget.paper_trail_on
+
+    # Retrieve the widgets created by single or multiple users
+    Widget.created_by(user)
+    Widget.created_by_many(users)
 
 And a `Version` instance has these methods:
 

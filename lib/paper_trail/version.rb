@@ -20,6 +20,18 @@ class Version < ActiveRecord::Base
     where(['created_at > ?', timestamp]).order("created_at ASC, #{self.primary_key} ASC")
   }
 
+  scope :creations, lambda {
+    where("versions.event='create'")
+  }
+
+  scope :created_by, lambda { |creator|
+    creations.where("versions.whodunnit=?", creator)
+  }
+
+  scope :created_by_many, lambda { |creators|
+    creations.where("versions.whodunnit IN (?)", creators)
+  }
+
   # Restore the item from this version.
   #
   # This will automatically restore all :has_one associations as they were "at the time",

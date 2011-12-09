@@ -428,6 +428,94 @@ class HasPaperTrailModelTest < ActiveSupport::TestCase
         assert_equal 'Alice', @widget.originator
       end
 
+      should 'retrieve versions for creation events' do
+        assert_equal 1, @widget.versions.creations.count
+        assert_equal @version, @widget.versions.creations.first
+      end
+
+      should 'retrieve versions by creator' do
+        assert_equal 1, @widget.versions.created_by('Alice').count
+        assert_equal @version, @widget.versions.created_by('Alice').first
+        assert_equal 1, Widget.created_by('Alice').count
+        assert_equal @widget, Widget.created_by('Alice').first
+      end
+
+      context 'when second record is created' do
+        setup do
+          PaperTrail.whodunnit = 'Alex'
+          @widget2 = Widget.new :name => 'Fidget2'
+          @widget2.save
+          @version2 = @widget2.versions.last  # only 1 version
+        end
+
+        should 'retrieve versions for creation events' do
+          assert_equal 1, @widget.versions.creations.count
+          assert_equal @version, @widget.versions.creations.first
+          assert_equal 1, @widget2.versions.creations.count
+          assert_equal @version2, @widget2.versions.creations.first
+          assert_equal 2, Version.creations.count
+          assert_equal [@version, @version2], Version.creations.all
+        end
+
+        should 'retrieve versions by creator' do
+          assert_equal 1, @widget.versions.created_by('Alice').count
+          assert_equal @version, @widget.versions.created_by('Alice').first
+          assert_equal 1, @widget2.versions.created_by('Alex').count
+          assert_equal @version2, @widget2.versions.created_by('Alex').first
+          assert_equal 1, @widget2.versions.created_by_many(['Alex', 'Alice']).count
+          assert_equal @version2, @widget2.versions.created_by_many(['Alex', 'Alice']).first
+          assert_equal 1, Version.created_by('Alice').count
+          assert_equal @version, Version.created_by('Alice').first
+          assert_equal 1, Version.created_by('Alex').count
+          assert_equal @version2, Version.created_by('Alex').first
+          assert_equal 2, Version.created_by_many(['Alex', 'Alice']).count
+          assert_equal [@version, @version2], Version.created_by_many(['Alex', 'Alice']).all
+          assert_equal 1, Widget.created_by('Alice').count
+          assert_equal @widget, Widget.created_by('Alice').first
+          assert_equal 1, Widget.created_by('Alex').count
+          assert_equal @widget2, Widget.created_by('Alex').first
+          assert_equal 2, Widget.created_by_many(['Alex', 'Alice']).count
+          assert_equal [@widget, @widget2], Widget.created_by_many(['Alex', 'Alice']).all
+        end
+
+        context 'when second record is updated' do
+          setup do
+            PaperTrail.whodunnit = 'Alice'
+            @widget2.update_attributes :name => "Updated"
+          end
+
+          should 'retrieve versions for creation events' do
+            assert_equal 1, @widget.versions.creations.count
+            assert_equal @version, @widget.versions.creations.first
+            assert_equal 1, @widget2.versions.creations.count
+            assert_equal @version2, @widget2.versions.creations.first
+            assert_equal 2, Version.creations.count
+            assert_equal [@version, @version2], Version.creations.all
+          end
+
+          should 'retrieve versions by creator' do
+            assert_equal 1, @widget.versions.created_by('Alice').count
+            assert_equal @version, @widget.versions.created_by('Alice').first
+            assert_equal 1, @widget2.versions.created_by('Alex').count
+            assert_equal @version2, @widget2.versions.created_by('Alex').first
+            assert_equal 1, @widget2.versions.created_by_many(['Alex', 'Alice']).count
+            assert_equal @version2, @widget2.versions.created_by_many(['Alex', 'Alice']).first
+            assert_equal 1, Version.created_by('Alice').count
+            assert_equal @version, Version.created_by('Alice').first
+            assert_equal 1, Version.created_by('Alex').count
+            assert_equal @version2, Version.created_by('Alex').first
+            assert_equal 2, Version.created_by_many(['Alex', 'Alice']).count
+            assert_equal [@version, @version2], Version.created_by_many(['Alex', 'Alice']).all
+            assert_equal 1, Widget.created_by('Alice').count
+            assert_equal @widget, Widget.created_by('Alice').first
+            assert_equal 1, Widget.created_by('Alex').count
+            assert_equal @widget2, Widget.created_by('Alex').first
+            assert_equal 2, Widget.created_by_many(['Alex', 'Alice']).count
+            assert_equal [@widget, @widget2], Widget.created_by_many(['Alex', 'Alice']).all
+          end
+        end
+      end
+
       context 'when a record is updated' do
         setup do
           PaperTrail.whodunnit = 'Bob'
@@ -442,6 +530,37 @@ class HasPaperTrailModelTest < ActiveSupport::TestCase
           assert_equal 'Bob',   @widget.originator
         end
 
+        should 'retrieve versions for creation events' do
+          assert_equal 1, @widget.versions.creations.count
+          assert_equal @widget.versions.first, @widget.versions.creations.first
+        end
+
+        should 'retrieve versions by creator' do
+          assert_equal 1, @widget.versions.created_by('Alice').count
+          assert_equal @widget.versions.first, @widget.versions.created_by('Alice').first
+          assert_equal 1, Widget.created_by('Alice').count
+          assert_equal @widget, Widget.created_by('Alice').first
+          assert_empty @widget.versions.created_by('Bob')
+          assert_empty Widget.created_by('Bob')
+        end
+
+        context 'when record is updated by creator' do
+          setup do
+            PaperTrail.whodunnit = 'Alice'
+            @widget.update_attributes :name => 'Same'
+          end
+
+          should 'retrieve versions for creation events' do
+            assert_equal 1, @widget.versions.creations.count
+            assert_equal @widget.versions.first, @widget.versions.creations.first
+          end
+
+          should 'retrieve versions by creator' do
+            assert_equal 1, @widget.versions.created_by('Alice').count
+            assert_equal @widget.versions.first, @widget.versions.created_by('Alice').first
+          end
+        end
+
         context 'when a record is destroyed' do
           setup do
             PaperTrail.whodunnit = 'Charlie'
@@ -454,6 +573,21 @@ class HasPaperTrailModelTest < ActiveSupport::TestCase
             assert_equal 'Bob',     @version.originator
             assert_equal 'Charlie', @version.terminator
             assert_equal 'Charlie', @widget.originator
+          end
+
+          should 'retrieve versions for creation events' do
+            assert_equal 1, Version.creations.count
+            assert_equal @version.previous.previous, Version.creations.first
+          end
+
+          should 'retrieve versions by creator' do
+            assert_equal 1, @widget.versions.created_by('Alice').count
+            assert_equal @version.previous.previous, @widget.versions.created_by('Alice').first
+            assert_empty Widget.created_by('Alice')
+            assert_empty @widget.versions.created_by('Bob')
+            assert_empty @widget.versions.created_by('Charlie')
+            assert_empty Widget.created_by('Bob')
+            assert_empty Widget.created_by('Charlie')
           end
         end
       end

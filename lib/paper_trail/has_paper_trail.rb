@@ -66,6 +66,17 @@ module PaperTrail
         after_create  :record_create  if !options[:on] || options[:on].include?(:create)
         before_update :record_update  if !options[:on] || options[:on].include?(:update)
         after_destroy :record_destroy if !options[:on] || options[:on].include?(:destroy)
+
+        #created_by... scopes
+        if self.version_class_name == 'Version'
+          scope :created_by, lambda { |creator|
+            joins(self.versions_association_name).merge(Version.created_by(creator))
+          }
+
+          scope :created_by_many, lambda { |creators|
+            joins(self.versions_association_name).merge(Version.created_by_many(creators))
+          }
+        end
       end
 
       # Switches PaperTrail off for this class.
